@@ -120,6 +120,26 @@ export const legendSortControl: ControlSetItem = {
   },
 };
 
+export const visibleSeriesControl: ControlSetItem = {
+  name: 'visibleSeries',
+  config: {
+    type: 'SelectControl',
+    freeForm: true,
+    multi: true,
+    label: t('Default visible series'),
+    default: [],
+    renderTrigger: true,
+    description: t(
+      'Series to show by default when the chart loads. Enter the exact ' +
+        'series label as it appears in the legend and press enter. ' +
+        'Leave empty to show all series by default. Series can still be ' +
+        'toggled via the legend after the chart loads.',
+    ),
+    visibility: ({ controls }: ControlPanelsContainerProps) =>
+      Boolean(controls?.show_legend?.value),
+  },
+};
+
 export const legendSection: ControlSetRow[] = [
   [<ControlSubSectionHeader>{t('Legend')}</ControlSubSectionHeader>],
   [showLegendControl],
@@ -127,6 +147,7 @@ export const legendSection: ControlSetRow[] = [
   [legendOrientationControl],
   [legendMarginControl],
   [legendSortControl],
+  [visibleSeriesControl],
 ];
 
 export const showValueControl: ControlSetItem = {

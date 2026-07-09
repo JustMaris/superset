@@ -230,6 +230,52 @@ test('should transform chart props for viz with showQueryIdentifiers=true', () =
   ]);
 });
 
+test('visibleSeries hides series not in the list by default', () => {
+  const chartProps = createEchartsTimeseriesTestChartProps<
+    EchartsMixedTimeseriesFormData,
+    EchartsMixedTimeseriesProps
+  >({
+    ...MIXED_TIMESERIES_CHART_PROPS_DEFAULTS,
+    defaultQueriesData: queriesData,
+    formData: {
+      ...formData,
+      showQueryIdentifiers: true,
+      visibleSeries: ['sum__num (Query A), girl', 'sum__num (Query A), boy'],
+    },
+    queriesData,
+  });
+  const transformed = transformProps(chartProps);
+
+  expect((transformed.echartOptions.legend as any).selected).toEqual({
+    'sum__num (Query A), girl': true,
+    'sum__num (Query A), boy': true,
+    'sum__num (Query B), girl': false,
+    'sum__num (Query B), boy': false,
+  });
+});
+
+test('visibleSeries is ignored once the user has interacted with the legend', () => {
+  const chartProps = createEchartsTimeseriesTestChartProps<
+    EchartsMixedTimeseriesFormData,
+    EchartsMixedTimeseriesProps
+  >({
+    ...MIXED_TIMESERIES_CHART_PROPS_DEFAULTS,
+    defaultQueriesData: queriesData,
+    formData: {
+      ...formData,
+      showQueryIdentifiers: true,
+      visibleSeries: ['sum__num (Query A), girl'],
+    },
+    queriesData,
+  });
+  chartProps.legendState = { 'sum__num (Query B), boy': true };
+  const transformed = transformProps(chartProps);
+
+  expect((transformed.echartOptions.legend as any).selected).toEqual({
+    'sum__num (Query B), boy': true,
+  });
+});
+
 describe('legend sorting', () => {
   const getChartProps = (overrides = {}) =>
     createEchartsTimeseriesTestChartProps<

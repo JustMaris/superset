@@ -103,6 +103,7 @@ export const DEFAULT_LEGEND_FORM_DATA: LegendFormData = {
   legendType: LegendType.Scroll,
   showLegend: true,
   legendSort: null,
+  visibleSeries: [],
 };
 
 export const DEFAULT_TITLE_FORM_DATA: TitleFormData = {

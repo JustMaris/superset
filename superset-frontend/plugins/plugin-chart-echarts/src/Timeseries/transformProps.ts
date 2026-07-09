@@ -37,6 +37,7 @@ import {
   isIntervalAnnotationLayer,
   isPhysicalColumn,
   isTimeseriesAnnotationLayer,
+  LegendState,
   resolveAutoCurrency,
   TimeseriesChartDataResponseResult,
   TimeseriesDataRecord,
@@ -185,7 +186,7 @@ export default function transformProps(
     width,
     height,
     filterState,
-    legendState,
+    legendState: rawLegendState,
     formData: { echartOptions: _echartOptions, ...formData },
     hooks,
     queriesData,
@@ -273,6 +274,7 @@ export default function transformProps(
     yAxisTitlePosition,
     zoomable,
     stackDimension,
+    visibleSeries,
   }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
 
   const refs: Refs = {};
@@ -305,7 +307,7 @@ export default function transformProps(
       stack,
       percentageThreshold,
       xAxisCol: xAxisLabel,
-      legendState,
+      legendState: rawLegendState,
     },
   );
   const extraMetricLabels = extractExtraMetrics(chartProps.rawFormData).map(
@@ -337,6 +339,23 @@ export default function transformProps(
       xAxisType,
     },
   );
+  // `legendState` reflects the user's in-session legend clicks and is
+  // undefined until they click something (meaning "everything visible").
+  // Once a "Default visible series" list is configured, use it to seed
+  // that initial state — but only until the user actually interacts with
+  // the legend, at which point their click takes over. Keyed by
+  // `rawSeries[].name`, which is what ends up in the legend (see
+  // `legendData` below) — not the raw query column names, which can
+  // differ once metric labels/forecast suffixes are applied.
+  const legendState: LegendState | undefined =
+    rawLegendState ??
+    (visibleSeries?.length
+      ? rawSeries.reduce((acc: LegendState, s) => {
+          const name = s.name as string;
+          acc[name] = visibleSeries.includes(name);
+          return acc;
+        }, {})
+      : undefined);
   const showValueIndexes = extractShowValueIndexes(rawSeries, {
     stack,
     onlyTotal,

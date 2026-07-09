@@ -396,3 +396,58 @@ test('does not emit cross-filter when no dimensions and time-based X-axis', asyn
     expect(setDataMaskMock).not.toHaveBeenCalled();
   }
 });
+
+test('a legend click persists the resulting selection via setControlValue', () => {
+  const setControlValueMock = jest.fn();
+  const onLegendStateChangedMock = jest.fn();
+
+  render(
+    <EchartsTimeseries
+      {...defaultProps}
+      setControlValue={setControlValueMock}
+      onLegendStateChanged={onLegendStateChangedMock}
+    />,
+  );
+
+  const [props] = mockEchart.mock.calls.at(-1) as [EchartsProps];
+  const legendHandler = props.eventHandlers?.legendselectchanged;
+  expect(legendHandler).toBeDefined();
+
+  legendHandler!({ selected: { 'Series A': true, 'Series B': false } });
+
+  expect(onLegendStateChangedMock).toHaveBeenCalledWith({
+    'Series A': true,
+    'Series B': false,
+  });
+  expect(setControlValueMock).toHaveBeenCalledWith('visibleSeries', [
+    'Series A',
+  ]);
+});
+
+test('re-selecting every series via the legend resets the persisted default to empty (show all)', () => {
+  const setControlValueMock = jest.fn();
+
+  render(
+    <EchartsTimeseries
+      {...defaultProps}
+      setControlValue={setControlValueMock}
+    />,
+  );
+
+  const [props] = mockEchart.mock.calls.at(-1) as [EchartsProps];
+  const legendHandler = props.eventHandlers?.legendselectall;
+  legendHandler!({ selected: { 'Series A': true, 'Series B': true } });
+
+  expect(setControlValueMock).toHaveBeenCalledWith('visibleSeries', []);
+});
+
+test('does not call setControlValue when it is not provided (e.g. dashboard extra-controls handler is falsy)', () => {
+  render(<EchartsTimeseries {...defaultProps} setControlValue={undefined} />);
+
+  const [props] = mockEchart.mock.calls.at(-1) as [EchartsProps];
+  const legendHandler = props.eventHandlers?.legendselectchanged;
+
+  expect(() =>
+    legendHandler!({ selected: { 'Series A': false } }),
+  ).not.toThrow();
+});

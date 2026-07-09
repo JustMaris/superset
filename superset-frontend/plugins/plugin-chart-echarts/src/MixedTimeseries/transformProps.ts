@@ -34,6 +34,7 @@ import {
   isIntervalAnnotationLayer,
   isPhysicalColumn,
   isTimeseriesAnnotationLayer,
+  LegendState,
   QueryFormData,
   QueryFormMetric,
   resolveAutoCurrency,
@@ -135,7 +136,7 @@ export default function transformProps(
     theme,
     inContextMenu,
     emitCrossFilters,
-    legendState,
+    legendState: rawLegendState,
   } = chartProps;
 
   let focusedSeries: string | null = null;
@@ -226,6 +227,7 @@ export default function transformProps(
     showQueryIdentifiers = false,
     metrics = [],
     metricsB = [],
+    visibleSeries,
   }: EchartsMixedTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
 
   const refs: Refs = {};
@@ -640,6 +642,19 @@ export default function transformProps(
       if (!legendSort) return 0;
       return legendSort === 'asc' ? a.localeCompare(b) : b.localeCompare(a);
     });
+  // `legendState` reflects the user's in-session legend clicks and is
+  // undefined until they click something (meaning "everything visible").
+  // Once a "Default visible series" list is configured, use it to seed
+  // that initial state — but only until the user actually interacts with
+  // the legend, at which point their click takes over.
+  const legendState: LegendState | undefined =
+    rawLegendState ??
+    (visibleSeries?.length
+      ? legendData.reduce((acc: LegendState, name) => {
+          acc[name] = visibleSeries.includes(name);
+          return acc;
+        }, {})
+      : undefined);
   const { effectiveLegendMargin, effectiveLegendType } = resolveLegendLayout({
     availableWidth:
       legendOrientation === LegendOrientation.Top ||
@@ -673,7 +688,12 @@ export default function transformProps(
     convertInteger(xAxisTitleMargin),
   );
 
-  const { setDataMask = () => {}, onContextMenu } = hooks;
+  const {
+    setDataMask = () => {},
+    setControlValue = () => {},
+    onContextMenu,
+    onLegendStateChanged,
+  } = hooks;
   const alignTicks = yAxisIndex !== yAxisIndexB;
 
   const echartOptions: EChartsCoreOption = {
@@ -896,6 +916,8 @@ export default function transformProps(
     height,
     echartOptions: mergedEchartOptions,
     setDataMask,
+    setControlValue,
+    onLegendStateChanged,
     emitCrossFilters,
     labelMap,
     labelMapB,

@@ -176,6 +176,67 @@ describe('EchartsTimeseries transformProps', () => {
     );
   });
 
+  test('visibleSeries hides series not in the list by default', () => {
+    const chartProps = createTestChartProps({
+      formData: {
+        ...formData,
+        visibleSeries: ['San Francisco'],
+      },
+    });
+    expect(transformProps(chartProps)).toEqual(
+      expect.objectContaining({
+        echartOptions: expect.objectContaining({
+          legend: expect.objectContaining({
+            selected: {
+              'San Francisco': true,
+              'New York': false,
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  test('visibleSeries is ignored once the user has interacted with the legend', () => {
+    const chartProps = createTestChartProps({
+      formData: {
+        ...formData,
+        visibleSeries: ['San Francisco'],
+      },
+    });
+    chartProps.legendState = { 'San Francisco': false, 'New York': true };
+    expect(transformProps(chartProps)).toEqual(
+      expect.objectContaining({
+        echartOptions: expect.objectContaining({
+          legend: expect.objectContaining({
+            selected: {
+              'San Francisco': false,
+              'New York': true,
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  test('empty visibleSeries shows all series by default', () => {
+    const chartProps = createTestChartProps({
+      formData: {
+        ...formData,
+        visibleSeries: [],
+      },
+    });
+    expect(transformProps(chartProps)).toEqual(
+      expect.objectContaining({
+        echartOptions: expect.objectContaining({
+          legend: expect.objectContaining({
+            selected: {},
+          }),
+        }),
+      }),
+    );
+  });
+
   test('should transform chart props for horizontal viz', () => {
     const chartProps = createTestChartProps({
       formData: {

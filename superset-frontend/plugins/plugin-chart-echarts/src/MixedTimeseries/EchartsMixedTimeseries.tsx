@@ -25,6 +25,7 @@ import {
   getColumnLabel,
   getNumberFormatter,
   getTimeFormatter,
+  LegendState,
 } from '@superset-ui/core';
 import { EchartsMixedTimeseriesChartTransformedProps } from './types';
 import Echart from '../components/Echart';
@@ -50,6 +51,8 @@ export default function EchartsMixedTimeseries({
   xAxis,
   refs,
   coltypeMapping,
+  setControlValue,
+  onLegendStateChanged,
 }: EchartsMixedTimeseriesChartTransformedProps) {
   const isFirstQuery = useCallback(
     (seriesIndex: number) => seriesIndex < seriesBreakdown,
@@ -128,10 +131,42 @@ export default function EchartsMixedTimeseries({
     ],
   );
 
+  // Legend clicks are normally ephemeral (reset on reload). When editing in
+  // Explore, `setControlValue` persists the current selection into the
+  // "Default visible series" control so it becomes the default on Save; in
+  // a dashboard it only updates that chart's local, non-persisted override
+  // (see ChartHolder's handleExtraControl), so viewers can't alter the
+  // saved chart just by clicking the legend.
+  const handleLegendStateChanged = useCallback(
+    (selected: LegendState) => {
+      onLegendStateChanged?.(selected);
+      if (setControlValue) {
+        const values = Object.values(selected);
+        const allVisible = values.length > 0 && values.every(Boolean);
+        setControlValue(
+          'visibleSeries',
+          allVisible
+            ? []
+            : Object.keys(selected).filter(name => selected[name]),
+        );
+      }
+    },
+    [onLegendStateChanged, setControlValue],
+  );
+
   const eventHandlers: EventHandlers = {
     click: props => {
       const { seriesName, seriesIndex } = props;
       handleChange(seriesName, seriesIndex);
+    },
+    legendselectchanged: payload => {
+      handleLegendStateChanged(payload.selected);
+    },
+    legendselectall: payload => {
+      handleLegendStateChanged(payload.selected);
+    },
+    legendinverseselect: payload => {
+      handleLegendStateChanged(payload.selected);
     },
     mouseout: () => {
       onFocusedSeries(null);

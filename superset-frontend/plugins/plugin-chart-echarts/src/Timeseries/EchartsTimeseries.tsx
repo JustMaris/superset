@@ -216,6 +216,29 @@ export default function EchartsTimeseries({
   const canCrossFilterByXAxis =
     !hasDimensions && xAxis.type === AxisType.Category;
 
+  // Legend clicks are normally ephemeral (reset on reload). When editing in
+  // Explore, `setControlValue` persists the current selection into the
+  // "Default visible series" control so it becomes the default on Save; in
+  // a dashboard it only updates that chart's local, non-persisted override
+  // (see ChartHolder's handleExtraControl), so viewers can't alter the
+  // saved chart just by clicking the legend.
+  const handleLegendStateChanged = useCallback(
+    (selected: LegendState) => {
+      onLegendStateChanged?.(selected);
+      if (setControlValue) {
+        const values = Object.values(selected);
+        const allVisible = values.length > 0 && values.every(Boolean);
+        setControlValue(
+          'visibleSeries',
+          allVisible
+            ? []
+            : Object.keys(selected).filter(name => selected[name]),
+        );
+      }
+    },
+    [onLegendStateChanged, setControlValue],
+  );
+
   const eventHandlers: EventHandlers = {
     click: props => {
       // Allow cross-filter by dimensions OR by categorical X-axis (issue #25334)
@@ -247,13 +270,13 @@ export default function EchartsTimeseries({
       onLegendScroll?.(payload.scrollDataIndex);
     },
     legendselectchanged: payload => {
-      onLegendStateChanged?.(payload.selected);
+      handleLegendStateChanged(payload.selected);
     },
     legendselectall: payload => {
-      onLegendStateChanged?.(payload.selected);
+      handleLegendStateChanged(payload.selected);
     },
     legendinverseselect: payload => {
-      onLegendStateChanged?.(payload.selected);
+      handleLegendStateChanged(payload.selected);
     },
     contextmenu: async eventParams => {
       if (onContextMenu) {
@@ -351,7 +374,7 @@ export default function EchartsTimeseries({
             }),
             {},
           );
-          onLegendStateChanged?.(legendState);
+          handleLegendStateChanged(legendState);
         }
       }
     },
