@@ -22,12 +22,14 @@ export type SelectOptionType = {
 };
 
 export type FrameType =
-  | 'Common'
-  | 'Calendar'
+  | 'Last'
+  | 'Simple'
+  | 'Previous'
   | 'Current'
-  | 'Custom'
   | 'Advanced'
   | 'No filter';
+
+export type AdvancedSubFrameType = 'Custom' | 'Expression';
 
 export type DateTimeGrainType =
   | 'second'

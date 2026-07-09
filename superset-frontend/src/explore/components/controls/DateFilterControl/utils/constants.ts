@@ -36,12 +36,17 @@ import { CheckboxOptionType } from '@superset-ui/core/components/Radio';
 import { extendedDayjs } from '@superset-ui/core/utils/dates';
 
 export const FRAME_OPTIONS: SelectOptionType[] = [
-  { value: 'Common', label: t('Last') },
-  { value: 'Calendar', label: t('Previous') },
+  { value: 'Last', label: t('Last') },
+  { value: 'Simple', label: t('Simple') },
+  { value: 'Previous', label: t('Previous') },
   { value: 'Current', label: t('Current') },
-  { value: 'Custom', label: t('Custom') },
   { value: 'Advanced', label: t('Advanced') },
   { value: 'No filter', label: t('No filter') },
+];
+
+export const ADVANCED_SUB_FRAME_OPTIONS: SelectOptionType[] = [
+  { value: 'Custom', label: t('Custom') },
+  { value: 'Expression', label: t('Expression') },
 ];
 
 export const COMMON_RANGE_OPTIONS: CheckboxOptionType[] = [
@@ -54,6 +59,32 @@ export const COMMON_RANGE_OPTIONS: CheckboxOptionType[] = [
 export const COMMON_RANGE_VALUES_SET = new Set(
   COMMON_RANGE_OPTIONS.map(value => value.value),
 );
+
+// Legacy literal "Last day/week/month/quarter/year" values (above) are kept
+// for backwards compatibility with previously-saved charts. The Simple tab
+// now emits the general "Last N <unit>" form for any amount/unit instead,
+// including for the N=1 quick-select shortcuts.
+export type LastNUnit =
+  | 'minutes'
+  | 'hours'
+  | 'days'
+  | 'weeks'
+  | 'months'
+  | 'quarters'
+  | 'years';
+
+export const LAST_N_UNIT_OPTIONS: { value: LastNUnit; label: string }[] = [
+  { value: 'minutes', label: t('Minutes') },
+  { value: 'hours', label: t('Hours') },
+  { value: 'days', label: t('Days') },
+  { value: 'weeks', label: t('Weeks') },
+  { value: 'months', label: t('Months') },
+  { value: 'quarters', label: t('Quarters') },
+  { value: 'years', label: t('Years') },
+];
+
+export const LAST_N_UNIT_PATTERN =
+  /^Last (\d+) (minutes?|hours?|days?|weeks?|months?|quarters?|years?)$/i;
 
 export const CALENDAR_RANGE_OPTIONS: CheckboxOptionType[] = [
   { value: PreviousCalendarWeek, label: t('previous calendar week') },

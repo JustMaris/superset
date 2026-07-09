@@ -42,18 +42,29 @@ import { useDebouncedEffect } from 'src/explore/exploreUtils';
 import { noOp } from 'src/utils/common';
 import ControlPopover from '../ControlPopover/ControlPopover';
 
-import { DateFilterControlProps, FrameType } from './types';
 import {
+  AdvancedSubFrameType,
+  DateFilterControlProps,
+  FrameType,
+} from './types';
+import {
+  ADVANCED_SUB_FRAME_OPTIONS,
+  CALENDAR_RANGE_VALUES_SET,
+  COMMON_RANGE_VALUES_SET,
+  CURRENT_RANGE_VALUES_SET,
   DateFilterTestKey,
   FRAME_OPTIONS,
+  LAST_N_UNIT_PATTERN,
+  guessAdvancedSubFrame,
   guessFrame,
   useDefaultTimeFilter,
 } from './utils';
 import {
-  CommonFrame,
   CalendarFrame,
   CustomFrame,
   AdvancedFrame,
+  SimpleFrame,
+  LastFrame,
   DateLabel,
 } from './components';
 import { CurrentCalendarFrame } from './components/CurrentCalendarFrame';
@@ -155,7 +166,14 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
 
   const [show, setShow] = useState<boolean>(false);
   const guessedFrame = useMemo(() => guessFrame(value), [value]);
+  const guessedAdvancedSubFrame = useMemo(
+    () => guessAdvancedSubFrame(value),
+    [value],
+  );
   const [frame, setFrame] = useState<FrameType>(guessedFrame);
+  const [advancedSubFrame, setAdvancedSubFrame] = useState<AdvancedSubFrameType>(
+    guessedAdvancedSubFrame,
+  );
   const [lastFetchedTimeRange, setLastFetchedTimeRange] = useState(value);
   const [timeRangeValue, setTimeRangeValue] = useState(value);
   const [validTimeRange, setValidTimeRange] = useState<boolean>(false);
@@ -189,10 +207,11 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
           +--------------+------+----------+--------+----------+-----------+
         */
         if (
-          guessedFrame === 'Common' ||
-          guessedFrame === 'Calendar' ||
-          guessedFrame === 'Current' ||
-          guessedFrame === 'No filter'
+          COMMON_RANGE_VALUES_SET.has(value) ||
+          LAST_N_UNIT_PATTERN.test(value) ||
+          CALENDAR_RANGE_VALUES_SET.has(value) ||
+          CURRENT_RANGE_VALUES_SET.has(value) ||
+          value === NO_TIME_RANGE
         ) {
           setActualTimeRange(value);
           setTooltipTitle(
@@ -245,6 +264,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   function onOpen() {
     setTimeRangeValue(value);
     setFrame(guessedFrame);
+    setAdvancedSubFrame(guessedAdvancedSubFrame);
     setShow(true);
     onOpenPopover();
   }
@@ -252,6 +272,7 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
   function onHide() {
     setTimeRangeValue(value);
     setFrame(guessedFrame);
+    setAdvancedSubFrame(guessedAdvancedSubFrame);
     setShow(false);
     onClosePopover();
   }
@@ -271,6 +292,10 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
     setFrame(value);
   }
 
+  function onChangeAdvancedSubFrame(value: AdvancedSubFrameType) {
+    setAdvancedSubFrame(value);
+  }
+
   const overlayContent = (
     <ContentStyleWrapper>
       <div className="control-label">{t('Range type')}</div>
@@ -281,10 +306,17 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         onChange={onChangeFrame}
       />
       {frame !== 'No filter' && <Divider />}
-      {frame === 'Common' && (
-        <CommonFrame value={timeRangeValue} onChange={setTimeRangeValue} />
+      {frame === 'Last' && (
+        <LastFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
-      {frame === 'Calendar' && (
+      {frame === 'Simple' && (
+        <SimpleFrame
+          value={timeRangeValue}
+          onChange={setTimeRangeValue}
+          isOverflowingFilterBar={isOverflowingFilterBar}
+        />
+      )}
+      {frame === 'Previous' && (
         <CalendarFrame value={timeRangeValue} onChange={setTimeRangeValue} />
       )}
       {frame === 'Current' && (
@@ -294,14 +326,29 @@ export default function DateFilterLabel(props: DateFilterControlProps) {
         />
       )}
       {frame === 'Advanced' && (
-        <AdvancedFrame value={timeRangeValue} onChange={setTimeRangeValue} />
-      )}
-      {frame === 'Custom' && (
-        <CustomFrame
-          value={timeRangeValue}
-          onChange={setTimeRangeValue}
-          isOverflowingFilterBar={isOverflowingFilterBar}
-        />
+        <>
+          <div className="control-label">{t('Advanced mode')}</div>
+          <StyledRangeType
+            ariaLabel={t('Advanced mode')}
+            options={ADVANCED_SUB_FRAME_OPTIONS}
+            value={advancedSubFrame}
+            onChange={onChangeAdvancedSubFrame}
+          />
+          <Divider />
+          {advancedSubFrame === 'Custom' && (
+            <CustomFrame
+              value={timeRangeValue}
+              onChange={setTimeRangeValue}
+              isOverflowingFilterBar={isOverflowingFilterBar}
+            />
+          )}
+          {advancedSubFrame === 'Expression' && (
+            <AdvancedFrame
+              value={timeRangeValue}
+              onChange={setTimeRangeValue}
+            />
+          )}
+        </>
       )}
       {frame === 'No filter' && <div data-test={DateFilterTestKey.NoFilter} />}
       <Divider />

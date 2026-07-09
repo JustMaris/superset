@@ -30,7 +30,7 @@ export const buildTimeRangeString = (since: string, until: string): string =>
   `${since}${SEPARATOR}${until}`;
 
 const formatDateEndpoint = (dttm: string, isStart?: boolean): string =>
-  dttm.replace('T00:00:00', '') || (isStart ? '-∞' : '∞');
+  dttm.replace('T00:00:00', '') || (isStart ? 'the beginning of time' : 'now');
 
 export const formatTimeRange = (
   timeRange: string,

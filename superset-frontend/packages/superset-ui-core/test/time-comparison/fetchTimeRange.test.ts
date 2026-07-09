@@ -50,10 +50,10 @@ test('generates a readable time range', () => {
     '2010-07-30 ≤ col < 2020-07-30',
   );
   expect(formatTimeRange('2010-07-30T01:00:00 : ')).toBe(
-    '2010-07-30T01:00:00 ≤ col < ∞',
+    '2010-07-30T01:00:00 ≤ col < now',
   );
   expect(formatTimeRange(' : 2020-07-30T00:00:00')).toBe(
-    '-∞ ≤ col < 2020-07-30',
+    'the beginning of time ≤ col < 2020-07-30',
   );
   expect(formatTimeRange('')).toBe('');
 });
@@ -82,7 +82,7 @@ test('returns a formatted time range from empty response', async () => {
 
   const timeRange = await fetchTimeRange('Last day');
   expect(timeRange).toEqual({
-    value: '-∞ ≤ col < ∞',
+    value: 'the beginning of time ≤ col < now',
   });
 });
 

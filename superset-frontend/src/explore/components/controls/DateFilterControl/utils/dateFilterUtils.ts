@@ -26,26 +26,41 @@ import {
   COMMON_RANGE_VALUES_SET,
   CALENDAR_RANGE_VALUES_SET,
   CURRENT_RANGE_VALUES_SET,
+  LAST_N_UNIT_PATTERN,
 } from '.';
-import { FrameType } from '../types';
+import { AdvancedSubFrameType, FrameType } from '../types';
 
 export const guessFrame = (timeRange: string): FrameType => {
-  if (COMMON_RANGE_VALUES_SET.has(timeRange)) {
-    return 'Common';
+  if (timeRange === NO_TIME_RANGE) {
+    return 'No filter';
+  }
+  if (
+    COMMON_RANGE_VALUES_SET.has(timeRange) ||
+    LAST_N_UNIT_PATTERN.test(timeRange)
+  ) {
+    return 'Last';
   }
   if (CALENDAR_RANGE_VALUES_SET.has(timeRange)) {
-    return 'Calendar';
+    return 'Previous';
   }
   if (CURRENT_RANGE_VALUES_SET.has(timeRange)) {
     return 'Current';
   }
-  if (timeRange === NO_TIME_RANGE) {
-    return 'No filter';
+  const { customRange, matchedFlag } = customTimeRangeDecode(timeRange);
+  if (matchedFlag) {
+    if (customRange.sinceMode === 'specific' && customRange.untilMode === 'specific') {
+      return 'Simple';
+    }
+    return 'Advanced';
   }
+  return 'Advanced';
+};
+
+export const guessAdvancedSubFrame = (timeRange: string): AdvancedSubFrameType => {
   if (customTimeRangeDecode(timeRange).matchedFlag) {
     return 'Custom';
   }
-  return 'Advanced';
+  return 'Expression';
 };
 
 export function useDefaultTimeFilter() {
