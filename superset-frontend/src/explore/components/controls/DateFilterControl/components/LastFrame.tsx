@@ -40,11 +40,10 @@ const LEGACY_LAST_UNIT: Record<string, LastNUnit> = {
   'Last year': 'years',
 };
 
-// Extra room beyond the widest label's text itself: the select's internal
-// horizontal padding, the dropdown caret icon, and the checkmark shown
-// next to the active option in the popup.
-const UNIT_SELECT_EXTRA_WIDTH = 56;
-const UNIT_SELECT_FALLBACK_WIDTH = 140;
+// Extra room beyond the current label's text itself: the select's
+// internal horizontal padding and the dropdown caret icon.
+const UNIT_SELECT_EXTRA_WIDTH = 44;
+const UNIT_SELECT_FALLBACK_WIDTH = 100;
 
 function measureTextWidth(text: string, font: string): number {
   const canvas = document.createElement('canvas');
@@ -70,11 +69,16 @@ export function LastFrame(props: FrameComponentProps) {
       : (legacyUnit ?? 'hours'),
   );
 
-  // Sized to the widest option label (translations vary a lot in length)
-  // measured in the font actually rendered for this viewer, so the box
-  // (and its dropdown, which always matches the trigger's width) is wide
-  // enough regardless of OS font substitution, browser zoom, or locale —
-  // a hardcoded pixel guess can't account for any of those.
+  // Sized to the *currently selected* label's own width — measured in the
+  // font actually rendered for this viewer, so it adapts to OS font
+  // substitution, browser zoom, and locale (translated labels vary a lot
+  // in length) — rather than a fixed width matching the longest option,
+  // which left visible empty space for every shorter one (most of them).
+  // The dropdown popup is intentionally NOT tied to this width (see
+  // popupMatchSelectWidth below): it needs to fit the longest option
+  // regardless of what's currently selected, and antd's default ties the
+  // popup width to the trigger's width, which is exactly what this box's
+  // width is now deliberately avoiding.
   const unitSelectRef = useRef<HTMLDivElement>(null);
   const [unitSelectWidth, setUnitSelectWidth] = useState<number>(
     UNIT_SELECT_FALLBACK_WIDTH,
@@ -84,11 +88,13 @@ export function LastFrame(props: FrameComponentProps) {
     const { font } = window.getComputedStyle(
       unitSelectRef.current || document.body,
     );
-    const widestLabel = Math.max(
-      ...LAST_N_UNIT_OPTIONS.map(option => measureTextWidth(option.label, font)),
+    const currentLabel =
+      LAST_N_UNIT_OPTIONS.find(option => option.value === lastUnit)?.label ??
+      '';
+    setUnitSelectWidth(
+      Math.ceil(measureTextWidth(currentLabel, font)) + UNIT_SELECT_EXTRA_WIDTH,
     );
-    setUnitSelectWidth(Math.ceil(widestLabel) + UNIT_SELECT_EXTRA_WIDTH);
-  }, []);
+  }, [lastUnit]);
 
   function onLastNChange(amount: number | null, unit: LastNUnit) {
     if (!amount || amount < 1) {
@@ -121,6 +127,7 @@ export function LastFrame(props: FrameComponentProps) {
             value={lastUnit}
             onChange={(unit: LastNUnit) => onLastNChange(lastAmount, unit)}
             style={{ width: unitSelectWidth }}
+            popupMatchSelectWidth={false}
           />
         </Col>
       </Row>

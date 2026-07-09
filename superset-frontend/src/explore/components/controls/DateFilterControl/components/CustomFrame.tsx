@@ -118,125 +118,115 @@ export function CustomFrame(props: FrameComponentProps) {
     <AntdThemeProvider locale={datePickerLocale}>
       <div data-test="custom-frame">
         <div className="section-title">{t('Configure custom time range')}</div>
-        <Row gutter={24}>
-          <Col span={12}>
-            <div className="control-label">
-              {t('Start (inclusive)')}{' '}
-              <InfoTooltip
-                tooltip={t('Start date included in time range')}
-                placement="right"
-              />
-            </div>
-            <Select
-              ariaLabel={t('Start (inclusive)')}
-              options={SINCE_MODE_OPTIONS}
-              value={sinceMode}
-              onChange={(value: string) => onChange('sinceMode', value)}
+        <div>
+          <div className="control-label">
+            {t('Start (inclusive)')}{' '}
+            <InfoTooltip
+              tooltip={t('Start date included in time range')}
+              placement="right"
             />
-            {sinceMode === 'specific' && (
-              <Row>
-                <DatePicker
-                  showTime
-                  defaultValue={dttmToDayjs(sinceDatetime)}
-                  onChange={(datetime: Dayjs) =>
-                    onChange('sinceDatetime', datetime.format(DAYJS_FORMAT))
-                  }
-                  allowClear={false}
-                  getPopupContainer={(triggerNode: HTMLElement) =>
-                    props.isOverflowingFilterBar
-                      ? (triggerNode.parentNode as HTMLElement)
-                      : document.body
-                  }
-                />
-              </Row>
-            )}
-            {sinceMode === 'relative' && (
-              <Row gutter={8}>
-                <Col span={11}>
-                  {/* Make sure sinceGrainValue looks like a positive integer */}
-                  <InputNumber
-                    placeholder={t('Relative quantity')}
-                    value={Math.abs(sinceGrainValue)}
-                    min={1}
-                    defaultValue={1}
-                    onChange={value =>
-                      onGrainValue('sinceGrainValue', value || 1)
-                    }
-                    onStep={value =>
-                      onGrainValue('sinceGrainValue', value || 1)
-                    }
-                  />
-                </Col>
-                <Col span={13}>
-                  <Select
-                    ariaLabel={t('Relative period')}
-                    options={SINCE_GRAIN_OPTIONS}
-                    value={sinceGrain}
-                    onChange={(value: string) => onChange('sinceGrain', value)}
-                  />
-                </Col>
-              </Row>
-            )}
-          </Col>
-          <Col span={12}>
-            <div className="control-label">
-              {t('End (exclusive)')}{' '}
-              <InfoTooltip
-                tooltip={t('End date excluded from time range')}
-                placement="right"
+          </div>
+          <Select
+            ariaLabel={t('Start (inclusive)')}
+            options={SINCE_MODE_OPTIONS}
+            value={sinceMode}
+            onChange={(value: string) => onChange('sinceMode', value)}
+          />
+          {sinceMode === 'specific' && (
+            <Row>
+              <DatePicker
+                showTime
+                defaultValue={dttmToDayjs(sinceDatetime)}
+                onChange={(datetime: Dayjs) =>
+                  onChange('sinceDatetime', datetime.format(DAYJS_FORMAT))
+                }
+                allowClear={false}
+                getPopupContainer={(triggerNode: HTMLElement) =>
+                  props.isOverflowingFilterBar
+                    ? (triggerNode.parentNode as HTMLElement)
+                    : document.body
+                }
               />
-            </div>
-            <Select
-              ariaLabel={t('End (exclusive)')}
-              options={UNTIL_MODE_OPTIONS}
-              value={untilMode}
-              onChange={(value: string) => onChange('untilMode', value)}
-            />
-            {untilMode === 'specific' && (
-              <Row>
-                <DatePicker
-                  showTime
-                  defaultValue={dttmToDayjs(untilDatetime)}
-                  onChange={(datetime: Dayjs) =>
-                    onChange('untilDatetime', datetime.format(DAYJS_FORMAT))
-                  }
-                  allowClear={false}
-                  getPopupContainer={(triggerNode: HTMLElement) =>
-                    props.isOverflowingFilterBar
-                      ? (triggerNode.parentNode as HTMLElement)
-                      : document.body
-                  }
+            </Row>
+          )}
+          {sinceMode === 'relative' && (
+            <Row gutter={8}>
+              <Col span={11}>
+                {/* Make sure sinceGrainValue looks like a positive integer */}
+                <InputNumber
+                  placeholder={t('Relative quantity')}
+                  value={Math.abs(sinceGrainValue)}
+                  min={1}
+                  defaultValue={1}
+                  onChange={value => onGrainValue('sinceGrainValue', value || 1)}
+                  onStep={value => onGrainValue('sinceGrainValue', value || 1)}
                 />
-              </Row>
-            )}
-            {untilMode === 'relative' && (
-              <Row gutter={8}>
-                <Col span={11}>
-                  <InputNumber
-                    placeholder={t('Relative quantity')}
-                    value={untilGrainValue}
-                    min={1}
-                    defaultValue={1}
-                    onChange={value =>
-                      onGrainValue('untilGrainValue', value || 1)
-                    }
-                    onStep={value =>
-                      onGrainValue('untilGrainValue', value || 1)
-                    }
-                  />
-                </Col>
-                <Col span={13}>
-                  <Select
-                    ariaLabel={t('Relative period')}
-                    options={UNTIL_GRAIN_OPTIONS}
-                    value={untilGrain}
-                    onChange={(value: string) => onChange('untilGrain', value)}
-                  />
-                </Col>
-              </Row>
-            )}
-          </Col>
-        </Row>
+              </Col>
+              <Col span={13}>
+                <Select
+                  ariaLabel={t('Relative period')}
+                  options={SINCE_GRAIN_OPTIONS}
+                  value={sinceGrain}
+                  onChange={(value: string) => onChange('sinceGrain', value)}
+                />
+              </Col>
+            </Row>
+          )}
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <div className="control-label">
+            {t('End (exclusive)')}{' '}
+            <InfoTooltip
+              tooltip={t('End date excluded from time range')}
+              placement="right"
+            />
+          </div>
+          <Select
+            ariaLabel={t('End (exclusive)')}
+            options={UNTIL_MODE_OPTIONS}
+            value={untilMode}
+            onChange={(value: string) => onChange('untilMode', value)}
+          />
+          {untilMode === 'specific' && (
+            <Row>
+              <DatePicker
+                showTime
+                defaultValue={dttmToDayjs(untilDatetime)}
+                onChange={(datetime: Dayjs) =>
+                  onChange('untilDatetime', datetime.format(DAYJS_FORMAT))
+                }
+                allowClear={false}
+                getPopupContainer={(triggerNode: HTMLElement) =>
+                  props.isOverflowingFilterBar
+                    ? (triggerNode.parentNode as HTMLElement)
+                    : document.body
+                }
+              />
+            </Row>
+          )}
+          {untilMode === 'relative' && (
+            <Row gutter={8}>
+              <Col span={11}>
+                <InputNumber
+                  placeholder={t('Relative quantity')}
+                  value={untilGrainValue}
+                  min={1}
+                  defaultValue={1}
+                  onChange={value => onGrainValue('untilGrainValue', value || 1)}
+                  onStep={value => onGrainValue('untilGrainValue', value || 1)}
+                />
+              </Col>
+              <Col span={13}>
+                <Select
+                  ariaLabel={t('Relative period')}
+                  options={UNTIL_GRAIN_OPTIONS}
+                  value={untilGrain}
+                  onChange={(value: string) => onChange('untilGrain', value)}
+                />
+              </Col>
+            </Row>
+          )}
+        </div>
         {sinceMode === 'relative' && untilMode === 'relative' && (
           <div className="control-anchor-to">
             <div className="control-label">{t('Anchor to')}</div>
