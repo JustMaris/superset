@@ -578,6 +578,13 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     # doesn't work with all nested types.
     # @lifecycle: development
     "PRESTO_EXPAND_DATA": False,
+    # Make the legacy "Last day/week/month/quarter/year" time range presets
+    # roll from the current moment (open-ended, like "Last N <unit>" does)
+    # instead of ending at a fixed calendar boundary ("today"). Off by
+    # default so existing saved charts/dashboards keep their original date
+    # range after upgrading.
+    # @lifecycle: development
+    "RELATIVE_END_NOW": False,
     # Enable Table V2 time comparison feature
     # @lifecycle: development
     "TABLE_V2_TIME_COMPARISON_ENABLED": False,

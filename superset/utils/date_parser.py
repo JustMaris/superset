@@ -418,6 +418,57 @@ def get_since_until(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     if time_range == NO_TIME_RANGE or time_range == _(NO_TIME_RANGE):
         return None, None
 
+    # Every "Last ..." form (the bare literal presets and any "Last N
+    # <unit>" combination, including units like "hour" that the stock
+    # parser can't handle at all) has, by default, always gone through the
+    # generic rule below: append " : today" and let the downstream relative-
+    # date grammar parse the left side. That grammar pairs a rolling
+    # "since" with a midnight-anchored "today" for "until", which for small
+    # windows can put "since" after "until" and raise a "From date cannot
+    # be larger than to date" error — and it has no support for "hour" at
+    # all. The rolling-window handling below fixes both problems by making
+    # every "Last ..." form relative to the current moment and open-ended
+    # on the until side, but doing that unconditionally would silently
+    # change the resolved date range of any previously-saved chart using
+    # one of these forms. So it's opt-in via the RELATIVE_END_NOW feature
+    # flag; with the flag off, every "Last ..." form falls through to the
+    # original behavior unchanged.
+    rolling_unit_amount = None
+    last_n_match = re.match(
+        r"^Last (\d+) (minutes?|hours?|days?|weeks?|months?|quarters?|years?)$",
+        time_range or "",
+        re.IGNORECASE,
+    )
+    legacy_last_literals = {
+        "Last day": ("DAY", 1),
+        "Last week": ("WEEK", 1),
+        "Last month": ("MONTH", 1),
+        "Last quarter": ("QUARTER", 1),
+        "Last year": ("YEAR", 1),
+    }
+    if time_range in legacy_last_literals or last_n_match:
+        from superset import feature_flag_manager
+
+        if feature_flag_manager.is_feature_enabled("RELATIVE_END_NOW"):
+            rolling_unit_amount = (
+                legacy_last_literals[time_range]
+                if time_range in legacy_last_literals
+                else (
+                    last_n_match.group(2).rstrip("s").upper(),
+                    int(last_n_match.group(1)),
+                )
+            )
+    if rolling_unit_amount:
+        # Anchor both ends to the real current moment unconditionally.
+        # relative_start/relative_end can't be used here even when set:
+        # get_since_until_from_time_range() always supplies them from
+        # DEFAULT_RELATIVE_START_TIME/DEFAULT_RELATIVE_END_TIME, which
+        # default to "today" — using that would anchor the window to
+        # midnight instead of now, defeating the entire point of this
+        # rolling-window feature.
+        unit, amount = rolling_unit_amount
+        time_range = f"DATEADD(DATETIME('now'), -{amount}, {unit}) : DATETIME('now')"
+
     if time_range and time_range.startswith("Last") and separator not in time_range:
         time_range = time_range + separator + _relative_end
 

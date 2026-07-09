@@ -722,3 +722,173 @@ def test_time_range_bounded_whitespace_regex_invalid(time_range: str) -> None:
     """Reject expressions with 0 or 6+ spaces (fall back to DATETIME wrapping)."""
     result = get_since_until(time_range)
     assert result[0] is None, f"Expected '{time_range}' to NOT match bounded regex"
+
+
+@pytest.mark.parametrize(
+    "time_range,unit",
+    [
+        ("Last day", "days"),
+        ("Last week", "weeks"),
+        ("Last month", "months"),
+        ("Last quarter", "months"),
+        ("Last year", "years"),
+    ],
+)
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_x_is_an_open_ended_rolling_window(time_range: str, unit: str) -> None:
+    """
+    With RELATIVE_END_NOW on, "Last day/week/month/quarter/year" become
+    rolling windows anchored to the current moment on both ends, so they
+    always include the most recent data — e.g. "Last day" at 2024-06-03
+    15:30 spans [2024-06-02 15:30, 2024-06-03 15:30), not the full
+    previous calendar day [2024-06-02 00:00, 2024-06-03 00:00).
+    """
+    since, until = get_since_until(time_range)
+    now = datetime(2024, 6, 3, 15, 30, 0)
+    assert until == now
+    assert since is not None
+    assert since < now
+    assert since.hour == now.hour and since.minute == now.minute
+
+
+@pytest.mark.parametrize(
+    "time_range",
+    ["Last day", "Last week", "Last month", "Last quarter", "Last year"],
+)
+@freezegun.freeze_time("2024-06-03 15:30:00")
+def test_last_x_keeps_stock_behavior_when_flag_is_off(time_range: str) -> None:
+    """
+    RELATIVE_END_NOW defaults to off, so every "Last ..." form must resolve
+    exactly as it did before that flag existed: a closed range ending at
+    midnight of "today", not an open-ended rolling window. This is the
+    guarantee that upgrading Superset doesn't change the resolved date
+    range of any previously-saved chart using these presets.
+    """
+    since, until = get_since_until(time_range)
+    assert until == datetime(2024, 6, 3, 0, 0, 0)
+    assert since is not None
+    assert since.hour == 0 and since.minute == 0
+
+
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_day_differs_from_previous_calendar_day() -> None:
+    """
+    With RELATIVE_END_NOW on, "Last day" (rolling, anchored to now) must
+    differ from "previous calendar week" style expressions (fixed
+    midnight-to-midnight calendar unit).
+    """
+    last_day_since, last_day_until = get_since_until("Last day")
+    prev_week_since, prev_week_until = get_since_until("previous calendar week")
+
+    assert last_day_until == datetime(2024, 6, 3, 15, 30, 0)
+    assert prev_week_until == datetime(2024, 6, 3, 0, 0, 0)
+    assert prev_week_since == datetime(2024, 5, 27, 0, 0, 0)
+    assert last_day_since != prev_week_since
+
+
+@pytest.mark.parametrize(
+    "unit,timedelta_kwarg",
+    [
+        ("minutes", "minutes"),
+        ("hours", "hours"),
+        ("days", "days"),
+        ("weeks", "weeks"),
+    ],
+)
+@pytest.mark.parametrize("amount", [1, 6, 12, 48])
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_n_units_is_an_open_ended_rolling_window(
+    amount: int, unit: str, timedelta_kwarg: str
+) -> None:
+    """
+    With RELATIVE_END_NOW on, "Last N minutes/hours/days" is handled by the
+    same rolling-window logic as "Last day/week/month/quarter/year":
+    anchored to now on both ends. This fixes a case the stock parser can't
+    handle at all (no "hour" support) and one where it would otherwise
+    pair a rolling "since" with a midnight-anchored "until" and raise a
+    "from date > to date" error for small windows.
+    """
+    now = datetime(2024, 6, 3, 15, 30, 0)
+    since, until = get_since_until(f"Last {amount} {unit}")
+    assert until == now
+    assert since == now - timedelta(**{timedelta_kwarg: amount})
+
+
+@pytest.mark.parametrize(
+    "time_range,expected_since",
+    [
+        ("Last 1 minute", datetime(2024, 6, 3, 15, 29, 0)),
+        ("Last 1 hour", datetime(2024, 6, 3, 14, 30, 0)),
+        ("Last 1 day", datetime(2024, 6, 2, 15, 30, 0)),
+    ],
+)
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_1_unit_singular_form(
+    time_range: str, expected_since: datetime
+) -> None:
+    since, until = get_since_until(time_range)
+    assert until == datetime(2024, 6, 3, 15, 30, 0)
+    assert since == expected_since
+
+
+@pytest.mark.parametrize(
+    "time_range,relativedelta_kwarg",
+    [
+        ("Last 2 months", {"months": 2}),
+        ("Last 1 quarter", {"months": 3}),
+        ("Last 3 quarters", {"months": 9}),
+        ("Last 1 year", {"years": 1}),
+        ("Last 5 years", {"years": 5}),
+    ],
+)
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_n_calendar_units_is_an_open_ended_rolling_window(
+    time_range: str, relativedelta_kwarg: dict
+) -> None:
+    """
+    With RELATIVE_END_NOW on, "Last N months/quarters/years" use
+    calendar-aware arithmetic (a month isn't a fixed duration), same
+    now-anchored rolling-window semantics.
+    """
+    now = datetime(2024, 6, 3, 15, 30, 0)
+    since, until = get_since_until(time_range)
+    assert until == now
+    assert since == now - relativedelta(**relativedelta_kwarg)
+
+
+@pytest.mark.parametrize(
+    "time_range",
+    ["Last day", "Last week", "Last 5 hours", "Last 90 minutes"],
+)
+@freezegun.freeze_time("2024-06-03 15:30:00")
+@with_feature_flags(RELATIVE_END_NOW=True)
+def test_last_x_rolls_to_now_even_with_default_relative_extras(
+    time_range: str,
+) -> None:
+    """
+    Regression test: superset/common/utils/time_range_utils.py's
+    get_since_until_from_time_range() always passes relative_start and
+    relative_end explicitly, defaulting to DEFAULT_RELATIVE_START_TIME /
+    DEFAULT_RELATIVE_END_TIME ("today" out of the box) whenever no
+    per-request override is set — so in real chart/dashboard queries these
+    parameters are practically always the truthy string "today", never
+    None. An earlier version of the rolling-window logic branched on
+    `if relative_start`/`if relative_end`, which treated that "today"
+    default as an explicit override and anchored the window to midnight
+    instead of now — silently defeating this entire feature outside of
+    tests that call get_since_until() directly without threading those
+    parameters through. The rolling window must stay anchored to now
+    regardless of what relative_start/relative_end are set to.
+    """
+    now = datetime(2024, 6, 3, 15, 30, 0)
+    since, until = get_since_until(
+        time_range, relative_start="today", relative_end="today"
+    )
+    assert until == now
+    assert since is not None
+    assert since < now
