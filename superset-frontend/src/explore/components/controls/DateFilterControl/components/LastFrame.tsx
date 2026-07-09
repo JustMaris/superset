@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { t } from '@apache-superset/core/translation';
 import { Select, Col, Row, InputNumber } from '@superset-ui/core/components';
 import {
@@ -40,6 +40,22 @@ const LEGACY_LAST_UNIT: Record<string, LastNUnit> = {
   'Last year': 'years',
 };
 
+// Extra room beyond the widest label's text itself: the select's internal
+// horizontal padding, the dropdown caret icon, and the checkmark shown
+// next to the active option in the popup.
+const UNIT_SELECT_EXTRA_WIDTH = 56;
+const UNIT_SELECT_FALLBACK_WIDTH = 140;
+
+function measureTextWidth(text: string, font: string): number {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return 0;
+  }
+  context.font = font;
+  return context.measureText(text).width;
+}
+
 export function LastFrame(props: FrameComponentProps) {
   const { value, onChange } = props;
 
@@ -53,6 +69,26 @@ export function LastFrame(props: FrameComponentProps) {
       ? (`${lastNMatch[2].replace(/s$/i, '')}s` as LastNUnit)
       : (legacyUnit ?? 'hours'),
   );
+
+  // Sized to the widest option label (translations vary a lot in length)
+  // measured in the font actually rendered for this viewer, so the box
+  // (and its dropdown, which always matches the trigger's width) is wide
+  // enough regardless of OS font substitution, browser zoom, or locale —
+  // a hardcoded pixel guess can't account for any of those.
+  const unitSelectRef = useRef<HTMLDivElement>(null);
+  const [unitSelectWidth, setUnitSelectWidth] = useState<number>(
+    UNIT_SELECT_FALLBACK_WIDTH,
+  );
+
+  useLayoutEffect(() => {
+    const { font } = window.getComputedStyle(
+      unitSelectRef.current || document.body,
+    );
+    const widestLabel = Math.max(
+      ...LAST_N_UNIT_OPTIONS.map(option => measureTextWidth(option.label, font)),
+    );
+    setUnitSelectWidth(Math.ceil(widestLabel) + UNIT_SELECT_EXTRA_WIDTH);
+  }, []);
 
   function onLastNChange(amount: number | null, unit: LastNUnit) {
     if (!amount || amount < 1) {
@@ -78,12 +114,13 @@ export function LastFrame(props: FrameComponentProps) {
             onChange={amount => onLastNChange(amount as number | null, lastUnit)}
           />
         </Col>
-        <Col>
+        <Col ref={unitSelectRef}>
           <Select
             ariaLabel={t('Time unit')}
             options={LAST_N_UNIT_OPTIONS}
             value={lastUnit}
             onChange={(unit: LastNUnit) => onLastNChange(lastAmount, unit)}
+            style={{ width: unitSelectWidth }}
           />
         </Col>
       </Row>
