@@ -17,6 +17,7 @@
  * under the License.
  */
 import { AppSection } from '@superset-ui/core';
+import { GenericDataType } from '@apache-superset/core/common';
 import {
   render,
   screen,
@@ -1248,4 +1249,295 @@ test('resets dependent filter to first item when value does not exist in data', 
       }),
     );
   });
+});
+
+test('checking the boolean checkbox filters to rows where the column is true', async () => {
+  jest.useRealTimers();
+  const setDataMaskMock = jest.fn();
+  const testProps = {
+    ...selectMultipleProps,
+    formData: {
+      ...selectMultipleProps.formData,
+      multiSelect: false,
+      booleanCheckboxMode: true,
+      enableEmptyFilter: false,
+      groupby: ['is_active'],
+    },
+    queriesData: [
+      {
+        ...selectMultipleProps.queriesData[0],
+        colnames: ['is_active'],
+        coltypes: [GenericDataType.Boolean],
+        data: [{ is_active: true }, { is_active: false }],
+        applied_filters: [{ column: 'is_active' }],
+      },
+    ],
+    filterState: { value: undefined },
+  };
+
+  render(
+    // @ts-expect-error
+    <SelectFilterPlugin
+      // @ts-expect-error
+      {...transformProps(testProps)}
+      setDataMask={setDataMaskMock}
+      showOverflow={false}
+    />,
+    {
+      useRedux: true,
+      initialState: {
+        nativeFilters: {
+          filters: {
+            'test-filter': {
+              name: 'Test Filter',
+            },
+          },
+        },
+        dataMask: {
+          'test-filter': {
+            extraFormData: {},
+            filterState: {
+              value: undefined,
+            },
+          },
+        },
+      },
+    },
+  );
+
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  const checkbox = screen.getByRole('checkbox');
+  expect(checkbox).not.toBeChecked();
+
+  userEvent.click(checkbox);
+
+  await waitFor(() => {
+    expect(setDataMaskMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extraFormData: {
+          filters: [
+            {
+              col: 'is_active',
+              op: 'IN',
+              val: [true],
+            },
+          ],
+        },
+        filterState: expect.objectContaining({
+          value: [true],
+        }),
+      }),
+    );
+  });
+});
+
+test('unchecking the boolean checkbox applies no filter (shows all data)', async () => {
+  jest.useRealTimers();
+  const setDataMaskMock = jest.fn();
+  const testProps = {
+    ...selectMultipleProps,
+    formData: {
+      ...selectMultipleProps.formData,
+      multiSelect: false,
+      booleanCheckboxMode: true,
+      enableEmptyFilter: false,
+      groupby: ['is_active'],
+    },
+    queriesData: [
+      {
+        ...selectMultipleProps.queriesData[0],
+        colnames: ['is_active'],
+        coltypes: [GenericDataType.Boolean],
+        data: [{ is_active: true }, { is_active: false }],
+        applied_filters: [{ column: 'is_active' }],
+      },
+    ],
+    filterState: { value: [true] },
+  };
+
+  render(
+    // @ts-expect-error
+    <SelectFilterPlugin
+      // @ts-expect-error
+      {...transformProps(testProps)}
+      setDataMask={setDataMaskMock}
+      showOverflow={false}
+    />,
+    {
+      useRedux: true,
+      initialState: {
+        nativeFilters: {
+          filters: {
+            'test-filter': {
+              name: 'Test Filter',
+            },
+          },
+        },
+        dataMask: {
+          'test-filter': {
+            extraFormData: {
+              filters: [{ col: 'is_active', op: 'IN', val: [true] }],
+            },
+            filterState: {
+              value: [true],
+            },
+          },
+        },
+      },
+    },
+  );
+
+  const checkbox = screen.getByRole('checkbox');
+  expect(checkbox).toBeChecked();
+
+  userEvent.click(checkbox);
+
+  await waitFor(() => {
+    expect(setDataMaskMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extraFormData: {},
+        filterState: expect.objectContaining({
+          value: null,
+        }),
+      }),
+    );
+  });
+});
+
+test('booleanCheckboxInvert makes the checkbox filter to false when checked', async () => {
+  jest.useRealTimers();
+  const setDataMaskMock = jest.fn();
+  const testProps = {
+    ...selectMultipleProps,
+    formData: {
+      ...selectMultipleProps.formData,
+      multiSelect: false,
+      booleanCheckboxMode: true,
+      booleanCheckboxInvert: true,
+      enableEmptyFilter: false,
+      groupby: ['is_active'],
+    },
+    queriesData: [
+      {
+        ...selectMultipleProps.queriesData[0],
+        colnames: ['is_active'],
+        coltypes: [GenericDataType.Boolean],
+        data: [{ is_active: true }, { is_active: false }],
+        applied_filters: [{ column: 'is_active' }],
+      },
+    ],
+    filterState: { value: undefined },
+  };
+
+  render(
+    // @ts-expect-error
+    <SelectFilterPlugin
+      // @ts-expect-error
+      {...transformProps(testProps)}
+      setDataMask={setDataMaskMock}
+      showOverflow={false}
+    />,
+    {
+      useRedux: true,
+      initialState: {
+        nativeFilters: {
+          filters: {
+            'test-filter': {
+              name: 'Test Filter',
+            },
+          },
+        },
+        dataMask: {
+          'test-filter': {
+            extraFormData: {},
+            filterState: {
+              value: undefined,
+            },
+          },
+        },
+      },
+    },
+  );
+
+  expect(screen.getByText('False')).toBeInTheDocument();
+  const checkbox = screen.getByRole('checkbox');
+  expect(checkbox).not.toBeChecked();
+
+  userEvent.click(checkbox);
+
+  await waitFor(() => {
+    expect(setDataMaskMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extraFormData: {
+          filters: [
+            {
+              col: 'is_active',
+              op: 'IN',
+              val: [false],
+            },
+          ],
+        },
+        filterState: expect.objectContaining({
+          value: [false],
+        }),
+      }),
+    );
+  });
+});
+
+test('renders the dropdown, not a checkbox, for a boolean column when booleanCheckboxMode is off', async () => {
+  jest.useRealTimers();
+  const setDataMaskMock = jest.fn();
+  const testProps = {
+    ...selectMultipleProps,
+    formData: {
+      ...selectMultipleProps.formData,
+      multiSelect: false,
+      booleanCheckboxMode: false,
+      groupby: ['is_active'],
+    },
+    queriesData: [
+      {
+        ...selectMultipleProps.queriesData[0],
+        colnames: ['is_active'],
+        coltypes: [GenericDataType.Boolean],
+        data: [{ is_active: true }, { is_active: false }],
+        applied_filters: [{ column: 'is_active' }],
+      },
+    ],
+    filterState: { value: undefined },
+  };
+
+  render(
+    // @ts-expect-error
+    <SelectFilterPlugin
+      // @ts-expect-error
+      {...transformProps(testProps)}
+      setDataMask={setDataMaskMock}
+      showOverflow={false}
+    />,
+    {
+      useRedux: true,
+      initialState: {
+        nativeFilters: {
+          filters: {
+            'test-filter': {
+              name: 'Test Filter',
+            },
+          },
+        },
+        dataMask: {
+          'test-filter': {
+            extraFormData: {},
+            filterState: {
+              value: undefined,
+            },
+          },
+        },
+      },
+    },
+  );
+
+  expect(screen.getByRole('combobox')).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 });

@@ -172,6 +172,15 @@ export default function getControlItemsMap({
         filterToEdit?.controlValues?.[controlItem.name] ??
         customizationToEdit?.controlValues?.[controlItem.name] ??
         controlItem?.config?.default;
+      const disablingControlName = controlItem.config.disabledIfControlChecked;
+      const enablingControlName = controlItem.config.disabledIfControlUnchecked;
+      const isDisabledByOtherControl =
+        (disablingControlName
+          ? !!formFilter?.controlValues?.[disablingControlName]
+          : false) ||
+        (enablingControlName
+          ? !formFilter?.controlValues?.[enablingControlName]
+          : false);
       const element = (
         <>
           <CleanFormItem
@@ -185,9 +194,12 @@ export default function getControlItemsMap({
             key={controlItem.name}
             placement="left"
             title={
-              controlItem.config.affectsDataMask &&
-              disabled &&
-              t('Populate "Default value" to enable this control')
+              (controlItem.config.affectsDataMask &&
+                disabled &&
+                t('Populate "Default value" to enable this control')) ||
+              (isDisabledByOtherControl &&
+                controlItem.config.disabledReason) ||
+              undefined
             }
           >
             <StyledRowFormItem
@@ -199,8 +211,12 @@ export default function getControlItemsMap({
               colon={false}
             >
               <Checkbox
-                disabled={controlItem.config.affectsDataMask && disabled}
-                onChange={checked => {
+                disabled={
+                  isDisabledByOtherControl ||
+                  (controlItem.config.affectsDataMask && disabled)
+                }
+                onChange={(e: { target: { checked: boolean } }) => {
+                  const checked = e.target.checked;
                   if (controlItem.config.requiredFirst) {
                     setNativeFilterFieldValues(form, filterId, {
                       requiredFirst: {
@@ -212,6 +228,28 @@ export default function getControlItemsMap({
                   if (controlItem.config.resetConfig) {
                     setNativeFilterFieldValues(form, filterId, {
                       defaultDataMask: null,
+                    });
+                  }
+                  const forcedOffControlName = checked
+                    ? controlItem.config.forcesOffControl
+                    : controlItem.config.forcesOffControlOnUncheck;
+                  if (forcedOffControlName) {
+                    // Read the live value instead of the `formFilter` prop
+                    // (a snapshot from this render, i.e. from *before* this
+                    // click): setNativeFilterFieldValues below replaces the
+                    // whole `controlValues` object, so merging onto a stale
+                    // snapshot would silently revert the checkbox's own
+                    // just-applied value.
+                    const liveControlValues = form.getFieldValue([
+                      'filters',
+                      filterId,
+                      'controlValues',
+                    ]);
+                    setNativeFilterFieldValues(form, filterId, {
+                      controlValues: {
+                        ...liveControlValues,
+                        [forcedOffControlName]: false,
+                      },
                     });
                   }
                   formChanged();

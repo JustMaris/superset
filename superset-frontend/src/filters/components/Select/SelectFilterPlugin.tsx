@@ -34,6 +34,7 @@ import { GenericDataType } from '@apache-superset/core/common';
 import { debounce, isUndefined } from 'lodash';
 import { useImmerReducer } from 'use-immer';
 import {
+  Checkbox,
   FormItem,
   LabeledValue,
   Select,
@@ -142,6 +143,8 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
     inverseSelection,
     defaultToFirstItem,
     searchAllOptions,
+    booleanCheckboxMode,
+    booleanCheckboxInvert,
   } = formData;
 
   const groupby = useMemo(
@@ -157,6 +160,11 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
     filterState,
   });
   const datatype: GenericDataType = coltypeMap[col];
+  const showBooleanCheckbox =
+    booleanCheckboxMode &&
+    !multiSelect &&
+    datatype === GenericDataType.Boolean;
+  const booleanCheckboxTargetValue = !booleanCheckboxInvert;
   const labelFormatter = useMemo(
     () =>
       getDataRecordFormatter({
@@ -493,51 +501,77 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
           appSection={appSection}
           inverseSelection={inverseSelection}
         >
-          {appSection !== AppSection.FilterConfigModal && inverseSelection && (
-            <Select
-              className="exclude-select"
-              value={`${excludeFilterValues}`}
-              options={[
-                { value: 'true', label: t('is not') },
-                { value: 'false', label: t('is') },
-              ]}
-              onChange={handleExclusionToggle}
-            />
+          {showBooleanCheckbox ? (
+            <Checkbox
+              disabled={isDisabled}
+              checked={filterState.value?.[0] === booleanCheckboxTargetValue}
+              onChange={(event: any) =>
+                handleChange(
+                  event.target.checked
+                    // @ts-expect-error boolean values are valid filter values,
+                    // but SelectValue's type doesn't reflect that (pre-existing)
+                    ? [booleanCheckboxTargetValue]
+                    : undefined,
+                )
+              }
+              onFocus={setFocusedFilter}
+              onBlur={handleBlur}
+            >
+              {booleanCheckboxTargetValue ? t('True') : t('False')}
+            </Checkbox>
+          ) : (
+            <>
+              {appSection !== AppSection.FilterConfigModal &&
+                inverseSelection && (
+                  <Select
+                    className="exclude-select"
+                    value={`${excludeFilterValues}`}
+                    options={[
+                      { value: 'true', label: t('is not') },
+                      { value: 'false', label: t('is') },
+                    ]}
+                    onChange={handleExclusionToggle}
+                  />
+                )}
+              <Select
+                name={formData.nativeFilterId}
+                allowClear
+                autoClearSearchValue
+                allowNewOptions={!searchAllOptions && creatable !== false}
+                allowSelectAll={!searchAllOptions}
+                value={multiSelect ? filterState.value || [] : filterState.value}
+                disabled={isDisabled}
+                getPopupContainer={
+                  showOverflow
+                    ? () =>
+                        (parentRef?.current as HTMLElement) || document.body
+                    : (trigger: HTMLElement) =>
+                        (trigger?.parentNode as HTMLElement) || document.body
+                }
+                showSearch={showSearch}
+                mode={multiSelect ? 'multiple' : 'single'}
+                placeholder={placeholderText}
+                onClear={() => onSearch('')}
+                onSearch={onSearch}
+                onBlur={handleBlur}
+                onFocus={setFocusedFilter}
+                onMouseEnter={setHoveredFilter}
+                onMouseLeave={unsetHoveredFilter}
+                // @ts-expect-error
+                onChange={handleChange}
+                ref={inputRef}
+                loading={isRefreshing}
+                oneLine={
+                  filterBarOrientation === FilterBarOrientation.Horizontal
+                }
+                invertSelection={inverseSelection && excludeFilterValues}
+                options={options}
+                sortComparator={sortComparator}
+                onOpenChange={setFilterActive}
+                className="select-container"
+              />
+            </>
           )}
-          <Select
-            name={formData.nativeFilterId}
-            allowClear
-            autoClearSearchValue
-            allowNewOptions={!searchAllOptions && creatable !== false}
-            allowSelectAll={!searchAllOptions}
-            value={multiSelect ? filterState.value || [] : filterState.value}
-            disabled={isDisabled}
-            getPopupContainer={
-              showOverflow
-                ? () => (parentRef?.current as HTMLElement) || document.body
-                : (trigger: HTMLElement) =>
-                    (trigger?.parentNode as HTMLElement) || document.body
-            }
-            showSearch={showSearch}
-            mode={multiSelect ? 'multiple' : 'single'}
-            placeholder={placeholderText}
-            onClear={() => onSearch('')}
-            onSearch={onSearch}
-            onBlur={handleBlur}
-            onFocus={setFocusedFilter}
-            onMouseEnter={setHoveredFilter}
-            onMouseLeave={unsetHoveredFilter}
-            // @ts-expect-error
-            onChange={handleChange}
-            ref={inputRef}
-            loading={isRefreshing}
-            oneLine={filterBarOrientation === FilterBarOrientation.Horizontal}
-            invertSelection={inverseSelection && excludeFilterValues}
-            options={options}
-            sortComparator={sortComparator}
-            onOpenChange={setFilterActive}
-            className="select-container"
-          />
         </StyledSpace>
       </FormItem>
     </FilterPluginStyle>

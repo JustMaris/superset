@@ -52,7 +52,11 @@ import {
   isTemporalColumn,
 } from '@superset-ui/chart-controls';
 import useAdvancedDataTypes from './useAdvancedDataTypes';
-import { useDatePickerInAdhocFilter } from '../utils';
+import {
+  useDatePickerInAdhocFilter,
+  useBooleanCheckboxInAdhocFilter,
+  isBooleanColumn,
+} from '../utils';
 import { useDefaultTimeFilter } from '../../DateFilterControl/utils';
 import { Clauses, ExpressionTypes } from '../types';
 
@@ -178,6 +182,11 @@ export const useSimpleTabFilterProps = (props: Props) => {
       operator = Operators.TemporalRange;
       operatorId = Operators.TemporalRange;
       comparator = defaultTimeFilter;
+    } else if (isBooleanColumn(id, props.datasource)) {
+      subject = id;
+      operator = OPERATOR_ENUM_TO_OPERATOR_TYPE[Operators.IsTrue].operation;
+      operatorId = Operators.IsTrue;
+      comparator = undefined;
     }
 
     props.onChange(
@@ -416,6 +425,16 @@ const AdhocFilterEditPopoverSimpleTabContent: FC<Props> = props => {
     onChange: onDatePickerChange,
   });
 
+  const booleanCheckbox = useBooleanCheckboxInAdhocFilter({
+    columnName:
+      typeof props.adhocFilter.subject === 'string'
+        ? props.adhocFilter.subject
+        : undefined,
+    operatorId: operatorId as Operators,
+    datasource: props.datasource,
+    onChange: onOperatorChange,
+  });
+
   useEffect(() => {
     const refreshComparatorSuggestions = () => {
       const { datasource } = props;
@@ -451,7 +470,7 @@ const AdhocFilterEditPopoverSimpleTabContent: FC<Props> = props => {
       }
     };
 
-    if (!datePicker) {
+    if (!datePicker && !booleanCheckbox) {
       refreshComparatorSuggestions();
     }
     // loadingComparatorSuggestions intentionally omitted - set inside effect, would cause infinite loop
@@ -461,6 +480,7 @@ const AdhocFilterEditPopoverSimpleTabContent: FC<Props> = props => {
     props.adhocFilter.clause,
     props.datasource,
     datePicker,
+    booleanCheckbox,
   ]);
 
   useEffect(() => {
@@ -603,7 +623,7 @@ const AdhocFilterEditPopoverSimpleTabContent: FC<Props> = props => {
   return (
     <>
       {subjectComponent}
-      {datePicker ?? operatorsAndOperandComponent}
+      {datePicker ?? booleanCheckbox ?? operatorsAndOperandComponent}
     </>
   );
 };

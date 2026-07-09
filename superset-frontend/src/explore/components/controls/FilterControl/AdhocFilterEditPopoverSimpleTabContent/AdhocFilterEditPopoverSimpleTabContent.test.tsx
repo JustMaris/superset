@@ -221,6 +221,39 @@ test('shows boolean only operators when subject is boolean', () => {
   ].map(operator => expect(isOperatorRelevant(operator, 'value')).toBe(true));
 });
 
+test('renders a checkbox instead of operator/value inputs when subject is boolean', () => {
+  const props = setup({
+    adhocFilter: new AdhocFilter({
+      expressionType: ExpressionTypes.Simple,
+      subject: 'value',
+      operatorId: Operators.IsTrue,
+      operator: OPERATOR_ENUM_TO_OPERATOR_TYPE[Operators.IsTrue].operation,
+      comparator: undefined,
+      clause: Clauses.Where,
+    }),
+    datasource: {
+      columns: [
+        {
+          id: 3,
+          column_name: 'value',
+          type: 'BOOL',
+        },
+      ],
+    },
+  });
+  expect(screen.getByRole('checkbox')).toBeChecked();
+  expect(screen.getByText('True')).toBeInTheDocument();
+  expect(
+    screen.queryByTestId('adhoc-filter-simple-value'),
+  ).not.toBeInTheDocument();
+
+  userEvent.click(screen.getByRole('checkbox'));
+  expect(props.onChange).toHaveBeenCalled();
+  const lastCall =
+    props.onChange.mock.calls[props.onChange.mock.calls.length - 1][0];
+  expect(lastCall.operatorId).toBe(Operators.IsFalse);
+});
+
 test('shows boolean only operators when subject is number', () => {
   const props = setup({
     adhocFilter: new AdhocFilter({

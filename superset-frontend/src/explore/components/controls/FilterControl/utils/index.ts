@@ -18,3 +18,7 @@
  */
 export { useGetTimeRangeLabel } from './useGetTimeRangeLabel';
 export { useDatePickerInAdhocFilter } from './useDatePickerInAdhocFilter';
+export {
+  useBooleanCheckboxInAdhocFilter,
+  isBooleanColumn,
+} from './useBooleanCheckboxInAdhocFilter';

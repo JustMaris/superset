@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { useState } from 'react';
 import { Filter, NativeFilterType } from '@superset-ui/core';
-import { render, screen, userEvent } from 'spec/helpers/testing-library';
-import type { FormInstance } from '@superset-ui/core/components';
+import { render, screen, userEvent, waitFor } from 'spec/helpers/testing-library';
+import { Form as AntdForm, type FormInstance } from '@superset-ui/core/components';
 import getControlItemsMap, { ControlItemsProps } from './getControlItemsMap';
 import {
   getControlItems,
@@ -206,6 +207,226 @@ test('Clicking on checkbox when resetConfig:false', () => {
   userEvent.click(screen.getByRole('checkbox'));
   expect(props.forceUpdate).toHaveBeenCalled();
   expect(setNativeFilterFieldValues).not.toHaveBeenCalled();
+});
+
+test('disabledIfControlChecked disables the checkbox when the other control is checked', () => {
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'multiSelect',
+      config: {
+        renderTrigger: true,
+        disabledIfControlChecked: 'booleanCheckboxMode',
+      },
+    },
+  ]);
+  const props = {
+    ...createProps(),
+    formFilter: { controlValues: { booleanCheckboxMode: true } },
+  };
+  // @ts-expect-error: bypass incomplete formFilter type for test
+  const controlItemsMap = getControlItemsMap(props);
+  renderControlItems(controlItemsMap);
+  expect(screen.getByRole('checkbox')).toBeDisabled();
+});
+
+test('disabledIfControlChecked leaves the checkbox enabled when the other control is unchecked', () => {
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'multiSelect',
+      config: {
+        renderTrigger: true,
+        disabledIfControlChecked: 'booleanCheckboxMode',
+      },
+    },
+  ]);
+  const props = {
+    ...createProps(),
+    formFilter: { controlValues: { booleanCheckboxMode: false } },
+  };
+  // @ts-expect-error: bypass incomplete formFilter type for test
+  const controlItemsMap = getControlItemsMap(props);
+  renderControlItems(controlItemsMap);
+  expect(screen.getByRole('checkbox')).not.toBeDisabled();
+});
+
+test('disabledIfControlUnchecked disables the checkbox until the other control is checked', () => {
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'booleanCheckboxInvert',
+      config: {
+        renderTrigger: true,
+        disabledIfControlUnchecked: 'booleanCheckboxMode',
+      },
+    },
+  ]);
+  const props = {
+    ...createProps(),
+    formFilter: { controlValues: { booleanCheckboxMode: false } },
+  };
+  // @ts-expect-error: bypass incomplete formFilter type for test
+  const controlItemsMap = getControlItemsMap(props);
+  renderControlItems(controlItemsMap);
+  expect(screen.getByRole('checkbox')).toBeDisabled();
+});
+
+test('checking a control with forcesOffControl turns the other control off', () => {
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'booleanCheckboxMode',
+      config: {
+        renderTrigger: true,
+        forcesOffControl: 'multiSelect',
+      },
+    },
+  ]);
+  const props = {
+    ...createProps(),
+    formFilter: { controlValues: { multiSelect: true } },
+  };
+  // @ts-expect-error: bypass incomplete formFilter type for test
+  const controlItemsMap = getControlItemsMap(props);
+  renderControlItems(controlItemsMap);
+  userEvent.click(screen.getByRole('checkbox'));
+  expect(setNativeFilterFieldValues).toHaveBeenCalledWith(
+    props.form,
+    props.filterId,
+    { controlValues: { multiSelect: false } },
+  );
+});
+
+test('regression: forcesOffControl does not clobber the checkbox\'s own value, and unchecking it works', async () => {
+  // Uses a real antd Form (unlike the tests above, which use a fully
+  // stubbed FormInstance) and the real setNativeFilterFieldValues, because
+  // this exact combination previously broke silently under the stub: the
+  // stub's getFieldValue always returns undefined, so a bug where
+  // forcesOffControl's payload was built from a stale `formFilter` React
+  // prop (captured before the click, instead of the live form value) went
+  // undetected by "toHaveBeenCalledWith" assertions above. That bug made
+  // checking/unchecking the controlling checkbox itself silently revert.
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'multiSelect',
+      config: {
+        renderTrigger: true,
+        label: 'Can select multiple values',
+        disabledIfControlChecked: 'booleanCheckboxMode',
+      },
+    },
+    {
+      name: 'booleanCheckboxMode',
+      config: {
+        renderTrigger: true,
+        label: 'Show as a checkbox for boolean columns',
+        forcesOffControl: 'multiSelect',
+      },
+    },
+  ]);
+  (setNativeFilterFieldValues as jest.Mock).mockImplementation(
+    jest.requireActual('./utils').setNativeFilterFieldValues,
+  );
+
+  function Harness() {
+    const [form] = AntdForm.useForm();
+    const [, setTick] = useState(0);
+    const formFilter = form.getFieldValue('filters')?.filterId;
+    const map = getControlItemsMap({
+      ...createProps(),
+      form,
+      forceUpdate: () => setTick(t => t + 1),
+      // @ts-expect-error: partial formFilter type for test
+      formFilter,
+    });
+    return (
+      <AntdForm form={form}>
+        {Object.values(map.controlItems).map(v => v.element)}
+      </AntdForm>
+    );
+  }
+
+  render(<Harness />);
+  const booleanCheckbox = screen.getByRole('checkbox', {
+    name: /Show as a checkbox/,
+  });
+  const multiSelectCheckbox = screen.getByRole('checkbox', {
+    name: /Can select multiple values/,
+  });
+
+  expect(booleanCheckbox).not.toBeChecked();
+
+  userEvent.click(booleanCheckbox);
+  await waitFor(() => expect(booleanCheckbox).toBeChecked());
+  await waitFor(() => expect(multiSelectCheckbox).toBeDisabled());
+
+  userEvent.click(booleanCheckbox);
+  await waitFor(() => expect(booleanCheckbox).not.toBeChecked());
+  await waitFor(() => expect(multiSelectCheckbox).not.toBeDisabled());
+
+  (setNativeFilterFieldValues as jest.Mock).mockReset();
+});
+
+test('unchecking booleanCheckboxMode also forces booleanCheckboxInvert off', async () => {
+  (getControlItems as jest.Mock).mockReturnValue([
+    {
+      name: 'booleanCheckboxMode',
+      config: {
+        renderTrigger: true,
+        label: 'Show as a checkbox for boolean columns',
+        forcesOffControlOnUncheck: 'booleanCheckboxInvert',
+      },
+    },
+    {
+      name: 'booleanCheckboxInvert',
+      config: {
+        renderTrigger: true,
+        label: 'Checkbox filters to "False" instead of "True"',
+        disabledIfControlUnchecked: 'booleanCheckboxMode',
+      },
+    },
+  ]);
+  (setNativeFilterFieldValues as jest.Mock).mockImplementation(
+    jest.requireActual('./utils').setNativeFilterFieldValues,
+  );
+
+  function Harness() {
+    const [form] = AntdForm.useForm();
+    const [, setTick] = useState(0);
+    const formFilter = form.getFieldValue('filters')?.filterId;
+    const map = getControlItemsMap({
+      ...createProps(),
+      form,
+      forceUpdate: () => setTick(t => t + 1),
+      // @ts-expect-error: partial formFilter type for test
+      formFilter,
+    });
+    return (
+      <AntdForm form={form}>
+        {Object.values(map.controlItems).map(v => v.element)}
+      </AntdForm>
+    );
+  }
+
+  render(<Harness />);
+  const booleanCheckbox = screen.getByRole('checkbox', {
+    name: /Show as a checkbox/,
+  });
+  const invertCheckbox = screen.getByRole('checkbox', {
+    name: /Checkbox filters to/,
+  });
+
+  // Turn on booleanCheckboxMode so the invert checkbox becomes enabled,
+  // then check it.
+  userEvent.click(booleanCheckbox);
+  await waitFor(() => expect(invertCheckbox).not.toBeDisabled());
+  userEvent.click(invertCheckbox);
+  await waitFor(() => expect(invertCheckbox).toBeChecked());
+
+  // Turning booleanCheckboxMode back off should force the invert checkbox
+  // off too, not just disable/hide it while leaving it checked underneath.
+  userEvent.click(booleanCheckbox);
+  await waitFor(() => expect(booleanCheckbox).not.toBeChecked());
+  await waitFor(() => expect(invertCheckbox).not.toBeChecked());
+
+  (setNativeFilterFieldValues as jest.Mock).mockReset();
 });
 
 // eslint-disable-next-line no-restricted-globals -- TODO: Migrate from describe blocks

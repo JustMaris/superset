@@ -20,6 +20,7 @@ import { t } from '@apache-superset/core/translation';
 import { validateNonEmpty } from '@superset-ui/core';
 import {
   ControlPanelConfig,
+  ControlPanelsContainerProps,
   sharedControls,
 } from '@superset-ui/chart-controls';
 import { DEFAULT_FORM_DATA } from './types';
@@ -32,6 +33,8 @@ const {
   defaultToFirstItem,
   searchAllOptions,
   sortAscending,
+  booleanCheckboxMode,
+  booleanCheckboxInvert,
 } = DEFAULT_FORM_DATA;
 
 const config: ControlPanelConfig = {
@@ -90,6 +93,56 @@ const config: ControlPanelConfig = {
               resetConfig: true,
               affectsDataMask: true,
               renderTrigger: true,
+              disabledIfControlChecked: 'booleanCheckboxMode',
+              disabledReason: t(
+                'Turn off "Show as a checkbox for boolean columns" to enable this',
+              ),
+            },
+          },
+        ],
+        [
+          {
+            name: 'booleanCheckboxMode',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Show as a checkbox for boolean columns'),
+              default: booleanCheckboxMode,
+              resetConfig: true,
+              affectsDataMask: true,
+              renderTrigger: true,
+              forcesOffControl: 'multiSelect',
+              forcesOffControlOnUncheck: 'booleanCheckboxInvert',
+              description: t(
+                'Only applies to boolean columns. Shows a single checkbox ' +
+                  'instead of a dropdown: unchecked applies no filter (all ' +
+                  'data), checked filters to rows where the column matches ' +
+                  'the selected value. Turns off "Can select multiple ' +
+                  'values" while enabled.',
+              ),
+              visibility: ({ controls }: ControlPanelsContainerProps) =>
+                !controls?.multiSelect?.value,
+            },
+          },
+        ],
+        [
+          {
+            name: 'booleanCheckboxInvert',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Checkbox filters to "False" instead of "True"'),
+              default: booleanCheckboxInvert,
+              resetConfig: true,
+              affectsDataMask: true,
+              renderTrigger: true,
+              disabledIfControlUnchecked: 'booleanCheckboxMode',
+              disabledReason: t(
+                'Turn on "Show as a checkbox for boolean columns" to enable this',
+              ),
+              description: t(
+                'By default, checking the box filters to rows where the ' +
+                  'column is true. Enable this to make checking the box ' +
+                  'filter to false instead.',
+              ),
             },
           },
         ],
