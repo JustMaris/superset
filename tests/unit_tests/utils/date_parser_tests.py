@@ -739,14 +739,15 @@ def test_time_range_bounded_whitespace_regex_invalid(time_range: str) -> None:
 def test_last_x_is_an_open_ended_rolling_window(time_range: str, unit: str) -> None:
     """
     With RELATIVE_END_NOW on, "Last day/week/month/quarter/year" become
-    rolling windows anchored to the current moment on both ends, so they
-    always include the most recent data — e.g. "Last day" at 2024-06-03
-    15:30 spans [2024-06-02 15:30, 2024-06-03 15:30), not the full
-    previous calendar day [2024-06-02 00:00, 2024-06-03 00:00).
+    rolling windows starting relative to the current moment, left
+    open-ended (no upper bound) so they always include the most recent
+    data — e.g. "Last day" at 2024-06-03 15:30 spans [2024-06-02 15:30,
+    ...), not the full previous calendar day [2024-06-02 00:00,
+    2024-06-03 00:00).
     """
     since, until = get_since_until(time_range)
     now = datetime(2024, 6, 3, 15, 30, 0)
-    assert until == now
+    assert until is None
     assert since is not None
     assert since < now
     assert since.hour == now.hour and since.minute == now.minute
@@ -775,14 +776,14 @@ def test_last_x_keeps_stock_behavior_when_flag_is_off(time_range: str) -> None:
 @with_feature_flags(RELATIVE_END_NOW=True)
 def test_last_day_differs_from_previous_calendar_day() -> None:
     """
-    With RELATIVE_END_NOW on, "Last day" (rolling, anchored to now) must
-    differ from "previous calendar week" style expressions (fixed
+    With RELATIVE_END_NOW on, "Last day" (rolling, open-ended) must differ
+    from "previous calendar week" style expressions (fixed
     midnight-to-midnight calendar unit).
     """
     last_day_since, last_day_until = get_since_until("Last day")
     prev_week_since, prev_week_until = get_since_until("previous calendar week")
 
-    assert last_day_until == datetime(2024, 6, 3, 15, 30, 0)
+    assert last_day_until is None
     assert prev_week_until == datetime(2024, 6, 3, 0, 0, 0)
     assert prev_week_since == datetime(2024, 5, 27, 0, 0, 0)
     assert last_day_since != prev_week_since
@@ -806,14 +807,14 @@ def test_last_n_units_is_an_open_ended_rolling_window(
     """
     With RELATIVE_END_NOW on, "Last N minutes/hours/days" is handled by the
     same rolling-window logic as "Last day/week/month/quarter/year":
-    anchored to now on both ends. This fixes a case the stock parser can't
-    handle at all (no "hour" support) and one where it would otherwise
-    pair a rolling "since" with a midnight-anchored "until" and raise a
-    "from date > to date" error for small windows.
+    relative to now, open-ended on the until side. This fixes a case the
+    stock parser can't handle at all (no "hour" support) and one where it
+    would otherwise pair a rolling "since" with a midnight-anchored "until"
+    and raise a "from date > to date" error for small windows.
     """
     now = datetime(2024, 6, 3, 15, 30, 0)
     since, until = get_since_until(f"Last {amount} {unit}")
-    assert until == now
+    assert until is None
     assert since == now - timedelta(**{timedelta_kwarg: amount})
 
 
@@ -831,7 +832,7 @@ def test_last_1_unit_singular_form(
     time_range: str, expected_since: datetime
 ) -> None:
     since, until = get_since_until(time_range)
-    assert until == datetime(2024, 6, 3, 15, 30, 0)
+    assert until is None
     assert since == expected_since
 
 
@@ -853,11 +854,11 @@ def test_last_n_calendar_units_is_an_open_ended_rolling_window(
     """
     With RELATIVE_END_NOW on, "Last N months/quarters/years" use
     calendar-aware arithmetic (a month isn't a fixed duration), same
-    now-anchored rolling-window semantics.
+    open-ended rolling-window semantics.
     """
     now = datetime(2024, 6, 3, 15, 30, 0)
     since, until = get_since_until(time_range)
-    assert until == now
+    assert until is None
     assert since == now - relativedelta(**relativedelta_kwarg)
 
 
@@ -882,13 +883,14 @@ def test_last_x_rolls_to_now_even_with_default_relative_extras(
     default as an explicit override and anchored the window to midnight
     instead of now — silently defeating this entire feature outside of
     tests that call get_since_until() directly without threading those
-    parameters through. The rolling window must stay anchored to now
-    regardless of what relative_start/relative_end are set to.
+    parameters through. The rolling window's "since" must stay anchored to
+    now, and "until" must stay open-ended, regardless of what
+    relative_start/relative_end are set to.
     """
     now = datetime(2024, 6, 3, 15, 30, 0)
     since, until = get_since_until(
         time_range, relative_start="today", relative_end="today"
     )
-    assert until == now
+    assert until is None
     assert since is not None
     assert since < now

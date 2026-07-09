@@ -459,15 +459,24 @@ def get_since_until(  # pylint: disable=too-many-arguments,too-many-locals,too-m
                 )
             )
     if rolling_unit_amount:
-        # Anchor both ends to the real current moment unconditionally.
+        # Anchor "since" to the real current moment unconditionally.
         # relative_start/relative_end can't be used here even when set:
         # get_since_until_from_time_range() always supplies them from
         # DEFAULT_RELATIVE_START_TIME/DEFAULT_RELATIVE_END_TIME, which
         # default to "today" — using that would anchor the window to
         # midnight instead of now, defeating the entire point of this
         # rolling-window feature.
+        #
+        # "until" is left open-ended (no upper bound) rather than also
+        # pinned to "now": get_time_filter() (models/helpers.py) only adds
+        # an upper-bound clause `if end_dttm`, so an open until produces a
+        # WHERE clause with no upper bound at all, not "now" re-resolved
+        # by the database. That avoids a race between when this function
+        # resolves "now" and when the query actually executes — any rows
+        # that land in that gap would otherwise be silently excluded by a
+        # concrete upper-bound timestamp.
         unit, amount = rolling_unit_amount
-        time_range = f"DATEADD(DATETIME('now'), -{amount}, {unit}) : DATETIME('now')"
+        time_range = f"DATEADD(DATETIME('now'), -{amount}, {unit}) : "
 
     if time_range and time_range.startswith("Last") and separator not in time_range:
         time_range = time_range + separator + _relative_end
