@@ -41,6 +41,7 @@ import {
   percentageThresholdControl,
   xAxisLabelRotation,
   xAxisLabelInterval,
+  xAxisForceCategorical,
   truncateXAxis,
   xAxisBounds,
   minorTicks,
@@ -213,6 +214,7 @@ const config: ControlPanelConfig = {
         ],
         [xAxisLabelRotation],
         [xAxisLabelInterval],
+        [xAxisForceCategorical],
         [forceMaxInterval],
         ...richTooltipSection,
         // eslint-disable-next-line react/jsx-key

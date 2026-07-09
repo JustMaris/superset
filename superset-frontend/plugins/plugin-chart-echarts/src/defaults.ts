@@ -33,7 +33,10 @@ export const defaultXAxis = {
 };
 
 export const defaultLegendPadding = {
-  [LegendOrientation.Top]: 20,
+  // A single-row horizontal legend (with selector buttons) renders taller
+  // than this value alone; the extra headroom keeps data labels on the
+  // topmost series from overlapping the legend above the plot area.
+  [LegendOrientation.Top]: 36,
   [LegendOrientation.Bottom]: 20,
   [LegendOrientation.Left]: 170,
   [LegendOrientation.Right]: 170,

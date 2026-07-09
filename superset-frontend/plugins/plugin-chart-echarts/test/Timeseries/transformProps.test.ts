@@ -1472,6 +1472,39 @@ test('x-axis formatter deduplicates consecutive identical labels for coarse time
   expect(label4).toBe('');
 });
 
+test('x-axis formatter on a forced-categorical temporal axis handles stringified tick values without NaN', () => {
+  const yearData = [
+    { __timestamp: Date.UTC(2003, 0, 1), sales: 100 },
+    { __timestamp: Date.UTC(2005, 0, 1), sales: 300 },
+  ];
+
+  const chartProps = createTestChartProps({
+    formData: {
+      granularity_sqla: 'ds',
+      xAxisTimeFormat: '%Y',
+      xAxisForceCategorical: true,
+    },
+    queriesData: [
+      createTestQueryData(yearData, {
+        colnames: ['__timestamp', 'sales'],
+        coltypes: [GenericDataType.Temporal, GenericDataType.Numeric],
+      }),
+    ],
+  });
+
+  const transformedProps = transformProps(chartProps);
+  const xAxisResult = transformedProps.echartOptions.xAxis as any;
+  expect(xAxisResult.type).toBe('category');
+  const { formatter } = xAxisResult.axisLabel;
+
+  // ECharts stringifies category-axis tick values collected from series
+  // data, so the formatter must handle a string, not just a raw number.
+  const label = formatter(String(Date.UTC(2003, 0, 1)));
+
+  expect(label).toBe('2003');
+  expect(label).not.toContain('NaN');
+});
+
 test('should assign distinct dash patterns for multiple time offsets consistently', () => {
   const queriesDataWithMultipleOffsets = [
     createTestQueryData([

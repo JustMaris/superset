@@ -44,6 +44,7 @@ import {
   xAxisBounds,
   xAxisLabelRotation,
   xAxisLabelInterval,
+  xAxisForceCategorical,
   forceMaxInterval,
 } from '../../../controls';
 
@@ -178,6 +179,7 @@ const config: ControlPanelConfig = {
         ],
         [xAxisLabelRotation],
         [xAxisLabelInterval],
+        [xAxisForceCategorical],
         [forceMaxInterval],
         ...richTooltipSection,
         // eslint-disable-next-line react/jsx-key

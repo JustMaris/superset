@@ -47,6 +47,7 @@ import {
   xAxisBounds,
   xAxisLabelRotation,
   xAxisLabelInterval,
+  xAxisForceCategorical,
   forceMaxInterval,
   colorByPrimaryAxisSection,
 } from '../../../controls';
@@ -223,6 +224,7 @@ function createAxisControl(axis: 'x' | 'y'): ControlSetRow[] {
         },
       },
     ],
+    [xAxisForceCategorical],
     [
       {
         name: 'y_axis_format',

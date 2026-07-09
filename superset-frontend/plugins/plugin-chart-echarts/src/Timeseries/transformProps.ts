@@ -719,9 +719,22 @@ export default function transformProps(
     xAxisDataType === GenericDataType.Temporal
       ? getTooltipTimeFormatter(tooltipTimeFormat)
       : String;
+  const timeXAxisFormatter = getXAxisFormatter(xAxisTimeFormat, timeGrainSqla);
   const xAxisFormatter =
     xAxisDataType === GenericDataType.Temporal
-      ? getXAxisFormatter(xAxisTimeFormat, timeGrainSqla)
+      ? xAxisType === AxisType.Time
+        ? timeXAxisFormatter
+        : // On a categorical axis (e.g. "Force categorical" on a temporal
+          // column), ECharts stringifies the tick values it collects from
+          // series data, so a raw epoch-ms number arrives as a string —
+          // which the time formatter's `new Date(...)` can't parse,
+          // producing garbage like "0NaN". Re-parse it back to a number.
+          (value: number | string) =>
+            typeof timeXAxisFormatter === 'function'
+              ? (timeXAxisFormatter as Function)(
+                  typeof value === 'string' ? Number(value) : value,
+                )
+              : String(value)
       : xAxisDataType === GenericDataType.Numeric
         ? getNumberFormatter(xAxisNumberFormat)
         : String;
@@ -883,6 +896,16 @@ export default function transformProps(
       })()
     : xAxisFormatter;
 
+  // The "X Axis Label Interval" control's "All" choice stores the string
+  // '0', not the number 0 — ECharts' axisLabel.interval only recognizes a
+  // numeric 0 as "show every label", so the string was silently falling
+  // through to auto-interval behavior. Coerce it, and once the user has
+  // explicitly asked for every label, respect that over hideOverlap (which
+  // otherwise hides labels that would visually collide).
+  const showAllXAxisLabels = `${xAxisLabelInterval}` === '0';
+  const resolvedXAxisLabelInterval =
+    xAxisLabelInterval === 'auto' ? 'auto' : Number(xAxisLabelInterval);
+
   let xAxis: any = {
     type: xAxisType,
     name: xAxisTitle,
@@ -895,10 +918,12 @@ export default function transformProps(
       // At 0° rotation, keep hideOverlap to prevent long labels
       // from overlapping each other, with showMaxLabel to ensure
       // the last data point label stays visible (#37181).
-      hideOverlap: !(xAxisType === AxisType.Time && xAxisLabelRotation !== 0),
+      hideOverlap:
+        !showAllXAxisLabels &&
+        !(xAxisType === AxisType.Time && xAxisLabelRotation !== 0),
       formatter: deduplicatedFormatter,
       rotate: xAxisLabelRotation,
-      interval: xAxisLabelInterval,
+      interval: resolvedXAxisLabelInterval,
       // Force last label on non-rotated time axes to prevent
       // hideOverlap from hiding it. Skipped when rotated to
       // avoid phantom labels at the axis boundary.
@@ -907,6 +932,12 @@ export default function transformProps(
         alignMaxLabel: 'right',
       }),
     },
+    // ECharts decides tick placement (axisTick) independently of which
+    // ticks get a text label (axisLabel.interval) — on a category axis
+    // with many values, leaving this at its own default 'auto' can thin
+    // out ticks (and therefore labels, which only render at a drawn tick)
+    // even when axisLabel.interval explicitly asks for every one.
+    axisTick: { interval: resolvedXAxisLabelInterval },
     minorTick: { show: minorTicks },
     minInterval:
       xAxisType === AxisType.Time && timeGrainSqla && !forceMaxInterval

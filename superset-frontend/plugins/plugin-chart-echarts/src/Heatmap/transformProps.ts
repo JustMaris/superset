@@ -435,6 +435,10 @@ export default function transformProps(
         formatter: xAxisFormatter,
         interval: xscaleInterval === -1 ? 'auto' : xscaleInterval - 1,
         rotate: xAxisLabelRotation,
+        // Only guard against overlap in Auto mode — an explicit "every N"
+        // interval is the user opting out of automatic collision handling,
+        // matching the Timeseries/MixedTimeseries convention.
+        hideOverlap: xscaleInterval === -1,
       },
     },
     yAxis: {
@@ -443,6 +447,7 @@ export default function transformProps(
       axisLabel: {
         formatter: yAxisFormatter,
         interval: yscaleInterval === -1 ? 'auto' : yscaleInterval - 1,
+        hideOverlap: yscaleInterval === -1,
       },
     },
   };

@@ -449,14 +449,19 @@ export const minorTicks: ControlSetItem = {
   },
 };
 
-export const forceCategorical: ControlSetItem = {
-  name: 'forceCategorical',
+export const xAxisForceCategorical: ControlSetItem = {
+  name: 'xAxisForceCategorical',
   config: {
     type: 'CheckboxControl',
     label: t('Force categorical'),
     default: false,
     renderTrigger: true,
-    description: t('Make the x-axis categorical'),
+    description: t(
+      'Treat the X-axis as a set of discrete categories rather than a ' +
+        'continuous timeline. Each distinct X value gets its own evenly ' +
+        'spaced tick, which guarantees a label under every bar/point — ' +
+        'useful when the data points are irregularly spaced in time.',
+    ),
   },
 };
 

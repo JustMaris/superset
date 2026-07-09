@@ -43,6 +43,7 @@ import {
   xAxisBounds,
   xAxisLabelRotation,
   xAxisLabelInterval,
+  xAxisForceCategorical,
   forceMaxInterval,
 } from '../controls';
 
@@ -360,6 +361,7 @@ const config: ControlPanelConfig = {
         ['x_axis_time_format'],
         [xAxisLabelRotation],
         [xAxisLabelInterval],
+        [xAxisForceCategorical],
         [forceMaxInterval],
         [<ControlSubSectionHeader>{t('Tooltip')}</ControlSubSectionHeader>],
         [
